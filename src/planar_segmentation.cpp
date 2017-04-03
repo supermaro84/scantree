@@ -14,7 +14,8 @@ public:
     cloudHandler()
     {
         pcl_sub = nh.subscribe("velodyne_points", 10, &cloudHandler::cloudCB, this);
-        pcl_pub = nh.advertise<sensor_msgs::PointCloud2>("pcl_segmented", 1);
+        pcl_pub = nh.advertise<sensor_msgs::PointCloud2>("scene_segmented", 1);
+	pcl2_pub = nh.advertise<sensor_msgs::PointCloud2>("ground_segmented", 1);
         ind_pub = nh.advertise<pcl_msgs::PointIndices>("point_indices", 1);
         coef_pub = nh.advertise<pcl_msgs::ModelCoefficients>("planar_coef", 1);
     }
@@ -23,6 +24,7 @@ public:
     {
         pcl::PointCloud<pcl::PointXYZ> cloud;
         pcl::PointCloud<pcl::PointXYZ> cloud_segmented;
+        pcl::PointCloud<pcl::PointXYZ> cloud_segmented2;
 
         pcl::fromROSMsg(input, cloud);
 
@@ -50,21 +52,29 @@ public:
 
         // Create the filtering object
         pcl::ExtractIndices<pcl::PointXYZ> extract;
+        pcl::ExtractIndices<pcl::PointXYZ> extract2;
         extract.setInputCloud(cloud.makeShared());
+        extract2.setInputCloud(cloud.makeShared());
         extract.setIndices(inliers);
+        extract2.setIndices(inliers);
         extract.setNegative(true);
+	extract2.setNegative(false);
         extract.filter(cloud_segmented);
+	extract2.filter(cloud_segmented2);
 
         //Publish the new cloud
         sensor_msgs::PointCloud2 output;
+        sensor_msgs::PointCloud2 output2;
         pcl::toROSMsg(cloud_segmented, output);
+        pcl::toROSMsg(cloud_segmented2, output2);
         pcl_pub.publish(output);
+        pcl2_pub.publish(output2);
     }
 
 protected:
     ros::NodeHandle nh;
     ros::Subscriber pcl_sub;
-    ros::Publisher pcl_pub, ind_pub, coef_pub;
+    ros::Publisher pcl_pub, pcl2_pub, ind_pub, coef_pub;
 };
 
 main(int argc, char **argv)
